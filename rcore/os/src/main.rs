@@ -2,43 +2,36 @@
 #![no_std]
 #![feature(panic_info_message)]
 
+use sbi::shutdown;
+
 #[macro_use]
 mod console;
 
 mod lang_items;
-
 mod sbi;
-
-use sbi::shutdown;
+mod trap;
+mod syscall;
+mod batch;
+mod sync;
 
 core::arch::global_asm!(include_str!("entry.asm"));
+
+// 为批处理系统硬编码方式链接应用程序
+// link_app.S会在rust项目构建时自动调用根目录下的build.rs完成
+core::arch::global_asm!(include_str!("link_app.S"));
 
 // 定义入口函数
 // no_mangle防止rust改名
 #[no_mangle]
 extern "C" fn rust_main() -> ! {
-    print!("Hello, ");
-    println!("world!");
+    clean_bss();
+    println!("[kernel] Hello, world!");
     info!("system\n");
     warn!("fucking\n");
     debug!("rock\n");
-    shutdown();
-    // sys_exit(9);
-}
-
-// 内核态系统调用入口函数, 通过寄存器传递系统调用编号, ecall执行
-fn syscall(id: usize, args: [usize; 3]) -> isize {
-    let mut ret;
-    unsafe {
-        core::arch::asm!(
-            "ecall",
-            inlateout("x10") args[0] => ret,
-            in("x11") args[1],
-            in("x12") args[2],
-            in("x17") id,
-        );
-    }
-    ret
+    trap::init();
+    batch::init();
+    batch::run_next_app();
 }
 
 // 清空bss段

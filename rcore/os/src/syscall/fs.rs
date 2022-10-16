@@ -1,6 +1,5 @@
 const FD_STDOUT: usize = 1;
 
-// TODO: review
 pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
     match fd {
         FD_STDOUT => {

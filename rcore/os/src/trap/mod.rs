@@ -15,7 +15,7 @@ core::arch::global_asm!(include_str!("trap.S"));
 
 pub fn init() {
     extern "C" { fn __alltraps(); }
-    // TODO: stvec
+    // 中断处理函数入口
     unsafe {
         stvec::write(__alltraps as usize, TrapMode::Direct);
     }

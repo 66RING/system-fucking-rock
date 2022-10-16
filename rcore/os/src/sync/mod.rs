@@ -1,6 +1,6 @@
 //! Synchronization and interior mutability primitives
 
-// TODO: 为何需要封装成UPSafeCell, 而不直接用RefCell
+// 简单封装, 实现单处理(U P)的sync
 mod up;
 
 pub use up::UPSafeCell;

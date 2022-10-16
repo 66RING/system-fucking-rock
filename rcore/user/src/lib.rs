@@ -25,7 +25,6 @@ pub fn exit(exit_code: i32) -> isize {
     sys_exit(exit_code)
 }
 
-// TODO: doc here
 // 标准库对用户程序的封装
 // 定义库入口 _start
 // 将_start编译到.text.entry段中

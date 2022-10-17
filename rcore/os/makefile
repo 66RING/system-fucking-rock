@@ -1,6 +1,7 @@
 TARGET := riscv64gc-unknown-none-elf
 MODE := debug
-KERNEL_BIN = target/$(TARGET)/$(MODE)/os
+KERNEL_ELF = target/$(TARGET)/$(MODE)/os
+KERNEL_BIN = $(KERNEL_ELF).bin
 BOOTLOADER = ../bootloader/rustsbi-qemu.bin
 
 # 指定系统二进制代码位置, qemu将pc指针置位
@@ -15,7 +16,13 @@ ifeq ($(MODE), release)
 endif
 
 
-build: env kernel
+build: env kernel $(KERNEL_BIN)
+
+# 要裁剪掉metadata加载时pc才是正确的位置
+# 裁剪后生成到.bin中($@表示target)
+$(KERNEL_BIN): kernel
+	@$(OBJCOPY) $(KERNEL_ELF) --strip-all -O binary $@
+
 
 # 检测rust环境, 自动补完
 env:
@@ -37,6 +44,13 @@ run: build
             -nographic \
             -bios $(BOOTLOADER) \
             -device loader,file=$(KERNEL_BIN),addr=$(KERNEL_ENTRY_PA)
+
+gdb: build
+	qemu-system-riscv64 \
+            -machine virt \
+            -nographic \
+            -bios $(BOOTLOADER) \
+            -device loader,file=$(KERNEL_BIN),addr=$(KERNEL_ENTRY_PA) -S -s
 
 clean:
 	cargo clean

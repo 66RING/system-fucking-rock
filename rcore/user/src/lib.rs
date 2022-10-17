@@ -18,12 +18,11 @@ use crate::syscall::*;
 // 实现应用程序需要的工具, 相当于标准库
 
 // 标准库对外提供API
-pub fn write(fd: usize, buf: &[u8]) -> isize {
-    sys_write(fd, buf)
-}
-pub fn exit(exit_code: i32) -> isize {
-    sys_exit(exit_code)
-}
+pub fn write(fd: usize, buf: &[u8]) -> isize { sys_write(fd, buf) }
+pub fn exit(exit_code: i32) -> isize { sys_exit(exit_code) }
+pub fn yield_() -> isize { sys_yield() }
+pub fn get_time() -> isize { sys_get_time() }
+
 
 // 标准库对用户程序的封装
 // 定义库入口 _start

@@ -11,8 +11,11 @@ mod lang_items;
 mod sbi;
 mod trap;
 mod syscall;
-mod batch;
 mod sync;
+mod task;
+mod timer;
+mod loader;
+mod config;
 
 core::arch::global_asm!(include_str!("entry.asm"));
 
@@ -30,8 +33,13 @@ extern "C" fn rust_main() -> ! {
     warn!("fucking\n");
     debug!("rock\n");
     trap::init();
-    batch::init();
-    batch::run_next_app();
+    loader::load_apps();
+    // 避免S特权级时钟中断被屏蔽
+    trap::enable_timer_interrupt();
+    timer::set_next_trigger();
+
+    task::run_first_task();
+    panic!("Unreachable in rust_main!");
 }
 
 // 清空bss段

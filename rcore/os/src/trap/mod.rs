@@ -1,14 +1,16 @@
 mod context;
 
 pub use context::TrapContext;
-use crate::batch::run_next_app;
 use crate::syscall::syscall;
 use core::arch::global_asm;
 use riscv::register::{
     mtvec::TrapMode,
-    scause::{self, Exception, Trap},
+    scause::{self, Exception, Trap, Interrupt},
     stval, stvec,
+    sie,
 };
+use crate::task::{exit_current_and_run_next, suspend_current_and_run_next};
+use crate::timer::set_next_trigger;
 
 
 core::arch::global_asm!(include_str!("trap.S"));
@@ -36,11 +38,20 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
         Trap::Exception(Exception::StoreFault) |
         Trap::Exception(Exception::StorePageFault) => {
             println!("[kernel] PageFault in application, core dumped.");
-            run_next_app();
+            // 进程状态标记退出, 执行下一个程序
+            exit_current_and_run_next();
         }
         Trap::Exception(Exception::IllegalInstruction) => {
             println!("[kernel] IllegalInstruction in application, core dumped.");
-            run_next_app();
+            // 进程状态标记退出, 执行下一个程序
+            exit_current_and_run_next();
+        }
+        // 时钟中断
+        Trap::Interrupt(Interrupt::SupervisorTimer) => {
+            // 设置下一次中断时间
+            set_next_trigger();
+            // 标记suspend, 调度下一个程序
+            suspend_current_and_run_next();
         }
         _ => {
             panic!("Unsupported trap {:?}, stval = {:#x}!", scause.cause(), stval);
@@ -48,3 +59,9 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
     }
     cx
 }
+
+// 使S特权级时钟中断不被屏蔽
+pub fn enable_timer_interrupt() {
+    unsafe { sie::set_stimer(); }
+}
+

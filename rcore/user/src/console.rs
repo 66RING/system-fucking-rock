@@ -2,9 +2,9 @@
 // 格式化输出
 //
 use core::fmt::{self, Write};
-use super::write;
+use super::{read, write};
 
-
+const STDIN: usize = 0;
 const STDOUT: usize = 1;
 
 // 类单元(unit-like)结构体：不包含任何字段
@@ -62,5 +62,12 @@ macro_rules! debug {
     ($fmt: literal $(, $($arg: tt)+)?) => {
         $crate::console::print(format_args!(concat!("\x1b[32m", $fmt, "\x1b[0m") $(, $($arg)+)?));
     }
+}
+
+pub fn getchar() -> u8 {
+    // 长度1的缓冲区
+    let mut c = [0u8; 1];
+    read(STDIN, &mut c);
+    c[0]
 }
 

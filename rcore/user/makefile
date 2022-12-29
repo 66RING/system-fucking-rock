@@ -11,7 +11,7 @@ OBJDUMP := rust-objdump --arch-name=riscv64
 OBJCOPY := rust-objcopy --binary-architecture=riscv64
 
 elf:
-	@python3 build.py
+	cargo build --release
 
 # 剔除所有程序的元数据, 因为目前的批处理系统不需要处理elf信息, 直接pc跳转然后执行
 binary: elf

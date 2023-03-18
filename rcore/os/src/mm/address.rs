@@ -83,9 +83,7 @@ impl From<VirtPageNum> for usize {
 }
 
 impl VirtAddr {
-    // 向上取整
     pub fn floor(&self) -> VirtPageNum { VirtPageNum(self.0 / PAGE_SIZE) }
-    // 向下取整
     pub fn ceil(&self) -> VirtPageNum  { VirtPageNum((self.0 - 1 + PAGE_SIZE) / PAGE_SIZE) }
     pub fn page_offset(&self) -> usize { self.0 & (PAGE_SIZE - 1) }
     pub fn aligned(&self) -> bool { self.page_offset() == 0 }
@@ -105,6 +103,12 @@ impl PhysAddr {
     pub fn page_offset(&self) -> usize { self.0 & (PAGE_SIZE-1) }
     pub fn floor(&self) -> PhysPageNum { PhysPageNum(self.0/PAGE_SIZE)}
     pub fn ceil(&self) -> PhysPageNum { PhysPageNum((self.0 + PAGE_SIZE -1)/ PAGE_SIZE) }
+    pub fn get_mut<T>(&self) -> &'static mut T {
+        unsafe {
+            (self.0 as *mut T).as_mut().unwrap()
+        }
+    }
+
 }
 
 impl From<PhysAddr> for PhysPageNum {
@@ -160,8 +164,8 @@ impl StepByOne for PhysPageNum {
 }
 
 
+// TODO learn, TODO note
 // 迭代器
-//  迭代器套路写法: 创建一个wrapper结构
 #[derive(Copy, Clone)]
 pub struct SimpleRange<T> where
     T: StepByOne + Copy + PartialEq + PartialOrd + Debug, {
@@ -212,4 +216,5 @@ impl<T> Iterator for SimpleRangeIterator<T> where
 // VPNRange描述一段虚拟页号的连续区间
 // 表示该逻辑段在地址区间中的位置和长度
 pub type VPNRange = SimpleRange<VirtPageNum>;
+
 

@@ -48,12 +48,14 @@ extern "C" fn rust_main() -> ! {
     mm::init();
     info!(".bss [{:#x}, {:#x})\n", sbss as usize, ebss as usize);
     mm::remap_test();
-
+    task::add_initproc();
+    println!("after initproc!");
     trap::init();
     // 避免S特权级时钟中断被屏蔽
     trap::enable_timer_interrupt();
     timer::set_next_trigger();
-    task::run_first_task();
+    loader::list_apps();
+    task::run_tasks();
 
     panic!("Unreachable in rust_main!");
 }

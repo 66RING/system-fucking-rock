@@ -1,4 +1,3 @@
-// TODO: review
 // 生成link_app.S
 //
 use std::io::{Result, Write};
@@ -39,6 +38,16 @@ _num_app:
         writeln!(f, r#"    .quad app_{}_start"#, i)?;
     }
     writeln!(f, r#"    .quad app_{}_end"#, apps.len() - 1)?;
+
+    // 添加process名称的支持, 使能通过应用名称调用启动
+    // 安装顺序将各个应用的名字通过`.string`伪指令放到数据段中
+    // 链接器会在每个字符串结尾加入\0
+    writeln!(f, r#"
+    .global _app_names
+_app_names:"#)?;
+    for app in apps.iter() {
+        writeln!(f, r#"    .string "{}""#, app)?;
+    }
 
     for (idx, app) in apps.iter().enumerate() {
         println!("app_{}: {}", idx, app);

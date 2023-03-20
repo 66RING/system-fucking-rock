@@ -18,6 +18,19 @@ use crate::syscall::*;
 
 use buddy_system_allocator::LockedHeap;
 
+use bitflags::*;
+
+// 打开文件标识符
+bitflags! {
+    pub struct OpenFlags: u32 {
+        const RDONLY = 0;
+        const WRONLY = 1 << 0;
+        const RDWR = 1 << 1;
+        const CREATE = 1 << 9;
+        const TRUNC = 1 << 10;
+    }
+}
+
 const USER_HEAP_SIZE: usize = 16384;
 static mut HEAP_SPACE: [u8; USER_HEAP_SIZE] = [0; USER_HEAP_SIZE];
 
@@ -81,6 +94,16 @@ pub fn waitpid(pid: usize, exit_code: &mut i32) -> isize {
             exit_pid => return exit_pid,
         }
     }
+}
+
+// 打开文件系统调用用户接口
+pub fn open(path: &str, flags: OpenFlags) -> isize { 
+    sys_open(path, flags.bits) 
+}
+
+// 关闭文件系统调用用户接口
+pub fn close(fd: usize) -> isize { 
+    sys_close(fd) 
 }
 
 

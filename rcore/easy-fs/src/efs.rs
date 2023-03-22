@@ -22,8 +22,8 @@ pub struct EasyFileSystem {
 type DataBlock = [u8; BLOCK_SZ];
 
 impl EasyFileSystem {
-    /// TODO: review
-    /// 为什么传入inode_bitmap_blocks?? 根据inode_bitmap_blocks计算inode总体所需空间
+    /// 仅用于用户态创建文件系统
+    /// 真正的操作系统加载文件系统由open完成
     pub fn create(
         block_device: Arc<dyn BlockDevice>,
         total_blocks: u32,
@@ -39,7 +39,7 @@ impl EasyFileSystem {
         let inode_total_blocks = inode_bitmap_blocks + inode_area_blocks;
         // 剩余空间用作数据区
         let data_total_blocks = total_blocks - 1 - inode_total_blocks;
-        // TODO: 防止数据区位图过小
+        // 防止数据区位图过小
         let data_bitmap_blocks = (data_total_blocks + 4096) / 4097;
         let data_area_blocks = data_total_blocks - data_bitmap_blocks;
         let data_bitmap = Bitmap::new(
@@ -114,9 +114,7 @@ impl EasyFileSystem {
     pub fn alloc_inode(&mut self) -> u32 {
         self.inode_bitmap.alloc(&self.block_device).unwrap() as u32
     }
-    /// TODO: review: 看看人家怎么抽象文件系统的
-    
-    /// Return a block ID not ID in the data area.
+    /// Return a data block ID not ID in the data area.
     pub fn alloc_data(&mut self) -> u32 {
         self.data_bitmap.alloc(&self.block_device).unwrap() as u32 + self.data_area_start_block
     }

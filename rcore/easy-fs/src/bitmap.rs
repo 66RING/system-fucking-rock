@@ -7,12 +7,13 @@ use super::block_dev::BlockDevice;
 const BLOCK_BITS: usize = BLOCK_SZ * 8;
 
 /// 整个数组有4096个bits
+///     刚好是一个块的大小
+///     可以用来管理4096个块的分配情况
 /// 以此为单位进行管理
-/// TODO: hard code
 type BitmapBlock = [u64; 64];
 
-/// TODO: review
-/// 如何管理的
+/// 一段连续的块空间
+/// 通过start + offset访问特定组
 pub struct Bitmap {
     // 位图区域开始的块号
     // 对应的bit等于offset + start_block_id

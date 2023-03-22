@@ -7,17 +7,18 @@ use alloc::vec::Vec;
 use alloc::string::String;
 use spin::{Mutex, MutexGuard};
 
-/// TODO: review
+/// 存内Inode
 pub struct Inode {
     block_id: usize,
     block_offset: usize,
-    // TODO: 为何通过fs
+    /// 存内Inode的下层是文件系统
+    /// 通过文件系统可以访问DiskInode
     fs: Arc<Mutex<EasyFileSystem>>,
     block_device: Arc<dyn BlockDevice>,
 }
 
 impl Inode {
-    /// TODO: review: 存内Inode？
+    /// 存内Inode, 是DiskInode的投影
     pub fn new(
         block_id: u32,
         block_offset: usize,

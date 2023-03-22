@@ -375,9 +375,10 @@ impl DiskInode {
         }
         readed_size
     }
-    /// TODO: review
+
     /// Write data into current disk inode
     /// size must be adjusted properly beforehand
+    /// offset is the addr of disk space in byte
     pub fn write_at(
         &mut self,
         offset: usize,
@@ -430,7 +431,6 @@ pub struct DirEntry {
     pub inode_number: u32,
 }
 
-/// TODO: review
 impl DirEntry {
     /// 创建一个空的目录项
     pub fn empty() -> Self {

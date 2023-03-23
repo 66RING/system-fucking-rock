@@ -1,8 +1,16 @@
+use super::{
+    frame_alloc,
+    PhysPageNum,
+    FrameTracker,
+    VirtPageNum,
+    VirtAddr,
+    PhysAddr,
+    StepByOne
+};
 use alloc::vec::Vec;
 use alloc::vec;
+use alloc::string::String;
 use bitflags::*;
-use super::{frame_alloc, PhysPageNum, FrameTracker, VirtPageNum, VirtAddr, StepByOne};
-
 
 // bitflags crate常用来做bit标志, bitflags!宏可以将一个类型封装成一个标志位集合类型
 // 将一个 u8 封装成一个标志位的集合类型，支持一些常见的集合运算
@@ -149,6 +157,17 @@ impl PageTable {
         self.find_pte(vpn)
             .map(|pte| {pte.clone()})
     }
+    pub fn translate_va(&self, va: VirtAddr) -> Option<PhysAddr> {
+        self.find_pte(va.clone().floor())
+            .map(|pte| {
+                //println!("translate_va:va = {:?}", va);
+                let aligned_pa: PhysAddr = pte.ppn().into();
+                //println!("translate_va:pa_align = {:?}", aligned_pa);
+                let offset = va.page_offset();
+                let aligned_pa_usize: usize = aligned_pa.into();
+                (aligned_pa_usize + offset).into()
+            })
+    }
     // 按照satp格式要求构造64位无符号整数，使分页模式为SV39
     pub fn token(&self) -> usize {
         8usize << 60 | self.root_ppn.0
@@ -160,11 +179,7 @@ impl PageTable {
 // token: 某个地址空间token
 // ptr: 缓冲区地址
 // len: 缓冲区长度
-pub fn translated_byte_buffer(
-    token: usize,
-    ptr: *const u8,
-    len: usize
-) -> Vec<&'static [u8]> {
+pub fn translated_byte_buffer(token: usize, ptr: *const u8, len: usize) -> Vec<&'static mut [u8]> {
     let page_table = PageTable::from_token(token);
     let mut start = ptr as usize;
     let end = start + len;
@@ -179,11 +194,43 @@ pub fn translated_byte_buffer(
         vpn.step();
         let mut end_va: VirtAddr = vpn.into();
         end_va = end_va.min(VirtAddr::from(end));
-        v.push(&ppn.get_bytes_array()[start_va.page_offset()..end_va.page_offset()]);
+        if end_va.page_offset() == 0 {
+            v.push(&mut ppn.get_bytes_array()[start_va.page_offset()..]);
+        } else {
+            v.push(&mut ppn.get_bytes_array()[start_va.page_offset()..end_va.page_offset()]);
+        }
         start = end_va.into();
     }
     v
 }
+
+// 从用户态地址空间拿到字符串，\0判断字符串结束
+pub fn translated_str(token: usize, ptr: *const u8) -> String {
+    let page_table = PageTable::from_token(token);
+    let mut string = String::new();
+    let mut va = ptr as usize;
+    loop {
+        let ch: u8 = *(page_table.translate_va(VirtAddr::from(va)).unwrap().get_mut());
+        if ch == 0 {
+            break;
+        } else {
+            string.push(ch as char);
+            va += 1;
+        }
+    }
+    string
+}
+
+// TODO learn
+pub fn translated_refmut<T>(token: usize, ptr: *mut T) -> &'static mut T {
+    //println!("into translated_refmut!");
+    let page_table = PageTable::from_token(token);
+    let va = ptr as usize;
+    //println!("translated_refmut: before translate_va");
+    page_table.translate_va(VirtAddr::from(va)).unwrap().get_mut()
+}
+
+
 
 
 

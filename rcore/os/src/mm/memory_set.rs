@@ -97,6 +97,13 @@ impl MemorySet {
                 permission
             ), None);
     }
+    pub fn remove_area_with_start_vpn(&mut self, start_vpn: VirtPageNum) {
+        if let Some((idx, area)) = self.areas.iter_mut().enumerate()
+            .find(|(_, area)| area.vpn_range.get_start() == start_vpn) {
+            area.unmap(&mut self.page_table);
+            self.areas.remove(idx);
+        }
+    }
     // 生成内核空间
     // Without kernel stacks
     // ** IMP **
@@ -242,6 +249,30 @@ impl MemorySet {
     pub fn token(&self) -> usize {
         self.page_table.token()
     }
+    // TODO review
+    pub fn from_existed_user(user_space: &MemorySet) -> MemorySet {
+        let mut memory_set = Self::new_bare();
+        // map trampoline
+        memory_set.map_trampoline();
+        // copy data section/trap_context/user_stack
+        // TODO  可以用来改进 ch4的实验?!?! TODO
+        // 遍历所有逻辑段，复制，插入新地址空间
+        for area in user_space.areas.iter() {
+            let new_area = MapArea::from_another(area);
+            memory_set.push(new_area, None);
+            // copy data from another space
+            // TODO 复制逻辑段中每个虚拟页面
+            for vpn in area.vpn_range {
+                let src_ppn = user_space.translate(vpn).unwrap().ppn();
+                let dst_ppn = memory_set.translate(vpn).unwrap().ppn();
+                dst_ppn.get_bytes_array().copy_from_slice(src_ppn.get_bytes_array());
+            }
+        }
+        memory_set
+    }
+    pub fn recycle_data_pages(&mut self) {
+        self.areas.clear();
+    }
 }
 
 impl MapArea {
@@ -330,6 +361,20 @@ impl MapArea {
         }
         page_table.unmap(vpn);
     }
+
+    // 从一个逻辑段复制
+    pub fn from_another(another: &MapArea) -> Self {
+        Self {
+            vpn_range: VPNRange::new(
+                another.vpn_range.get_start(),
+                another.vpn_range.get_end(),
+            ),
+            // 没有真正映射到物理页，data_frames空 TODO data_frames怎么用
+            data_frames: BTreeMap::new(),
+            map_type: another.map_type,
+            map_perm: another.map_perm,
+        }
+    }
 }
 
 // lazy_static，运行时第一次用到才初始化，但占用的空间是编译时确定的，放在全局数据段中
@@ -360,31 +405,6 @@ pub fn remap_test() {
     );
     println!("remap_test passed!");
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

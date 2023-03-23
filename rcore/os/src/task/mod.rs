@@ -2,14 +2,14 @@ mod task;
 mod context;
 mod switch;
 
-use crate::config::*;
-use crate::loader::{get_num_app, init_app_cx};
+use crate::loader::{get_num_app,get_app_data};
 use crate::sync::UPSafeCell;
-use crate::task::context::TaskContext;
+pub use context::TaskContext;
 use switch::__switch;
 use task::{TaskControlBlock, TaskStatus};
 use lazy_static::*;
-
+use alloc::vec::Vec;
+use crate::trap::TrapContext;
 
 // 全局任务管理器
 pub struct TaskManager {
@@ -19,37 +19,26 @@ pub struct TaskManager {
 
 // 变量(inner)常量分离
 struct TaskManagerInner {
-    tasks: [TaskControlBlock; MAX_APP_NUM],
+    tasks: Vec<TaskControlBlock>,
     current_task: usize,        // 无法推断出还剩多少没有执行
 }
 
 lazy_static! {
     pub static ref TASK_MANAGER: TaskManager = {
-        // 获取总app数
+        println!("init TASK_MANAGER");
         let num_app = get_num_app();
-        // 创建tcb数组(未初始化)
-        let mut tasks = [
-            TaskControlBlock {
-                task_cx: TaskContext::zero_init(),
-                task_status: TaskStatus::UnInit
-            };
-            MAX_APP_NUM
-        ];
-        // 初始化每个任务 -> Ready & cx
-        //  **为每个任务的内核栈都伪造一个TrapContext**
-        //  TrapContext.sp -> **用户栈**
-        //  TaskContext.sp -> 内核栈
-        //
-        //  __switch切换任务的内核栈
-        //  __restore切换内核栈到用户栈
+        println!("num_app = {}", num_app);
+        let mut tasks: Vec<TaskControlBlock> = Vec::new();
+        // 依次为每个应用创建TCB
         for i in 0..num_app {
-            tasks[i].task_cx = TaskContext::goto_restore(init_app_cx(i));
-            tasks[i].task_status = TaskStatus::Ready;
+            tasks.push(TaskControlBlock::new(
+                get_app_data(i),
+                i,
+            ));
         }
-        // 返回全局任务管理器实例
         TaskManager {
             num_app,
-            inner: unsafe { UPSafeCell::new(TaskManagerInner {
+            inner: unsafe{ UPSafeCell::new(TaskManagerInner {
                 tasks,
                 current_task: 0,
             })},
@@ -109,12 +98,14 @@ impl TaskManager {
     fn find_next_task(&self) -> Option<usize> {
         let inner = self.inner.exclusive_access();
         let current = inner.current_task;
-        // 遍历所有进程, 找到状态的Ready的, 注意id要先取模防止越界
+        // 找current后第一个Ready的app
+        // cool
         (current + 1..current + self.num_app + 1).map(|id| id % self.num_app)
             .find(|id| {
                 inner.tasks[*id].task_status == TaskStatus::Ready
             })
     }
+    // 加载第一个应用
     fn run_first_task(&self) -> ! {
         let mut inner = self.inner.exclusive_access();
         let task0 = &mut inner.tasks[0];
@@ -132,6 +123,18 @@ impl TaskManager {
         }
         panic!("unreachable in run_first_task!");
     }
+    // 获取地址空间
+    fn get_current_token(&self) -> usize {
+        let inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].get_user_token()
+    }
+    // 获取trap上下文
+    fn get_current_trap_cx(&self) -> &mut TrapContext {
+        let inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].get_trap_cx()
+    }
 }
 
 // 修改状态然后切换
@@ -147,3 +150,12 @@ pub fn exit_current_and_run_next() {
 pub fn run_first_task() {
     TASK_MANAGER.run_first_task();
 }
+// 获得当前应用地址空间token
+pub fn current_user_token() -> usize {
+    TASK_MANAGER.get_current_token()
+}
+// 获得当前应用地址空间Trap上下文
+pub fn current_trap_cx() -> &'static mut TrapContext {
+    TASK_MANAGER.get_current_trap_cx()
+}
+

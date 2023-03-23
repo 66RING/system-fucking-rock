@@ -54,5 +54,6 @@ gdb: build
 
 clean:
 	cargo clean
+	@cd ../user && make clean
 
 .PHONY: build clean run

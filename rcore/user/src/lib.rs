@@ -30,25 +30,9 @@ pub fn get_time() -> isize { sys_get_time() }
 #[no_mangle]
 #[link_section = ".text.entry"]
 pub extern "C" fn _start() -> ! {
-    clear_bss();
-    // unsafe {
-    //     HEAP.lock()
-    //         .init(HEAP_SPACE.as_ptr() as usize, USER_HEAP_SIZE)
-    // }
     exit(main());
     panic!("unreachable after sys_exit!");
 }
-
-fn clear_bss() {
-    extern "C" {
-        fn start_bss();
-        fn end_bss();
-    }
-    (start_bss as usize..end_bss as usize).for_each(|addr| unsafe {
-        (addr as *mut u8).write_volatile(0);
-    });
-}
-
 
 // 若链接, bin中不存在main时使用
 #[linkage = "weak"]

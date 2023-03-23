@@ -20,3 +20,8 @@ pub fn kernel_stack_position(app_id: usize) -> (usize, usize) {
     (bottom, top)
 }
 
+/// 特定的物理地址用于访问外设寄存器
+/// QEMU中virtio外设总线的MMIO地址为如下内容
+pub const MMIO: &[(usize, usize)] = &[
+    (0x10001000, 0x1000),
+];

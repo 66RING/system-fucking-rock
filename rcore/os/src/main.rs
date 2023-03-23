@@ -21,6 +21,8 @@ mod timer;
 mod loader;
 mod config;
 mod mm;
+mod fs;
+mod drivers;
 
 extern crate alloc;
 

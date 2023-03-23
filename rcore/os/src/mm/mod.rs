@@ -4,17 +4,19 @@ mod frame_allocator;
 mod page_table;
 mod memory_set;
 
-use page_table::{PageTable, PTEFlags};
-use address::{VPNRange, StepByOne};
-pub use address::{PhysAddr, VirtAddr, PhysPageNum, VirtPageNum};
-pub use frame_allocator::{FrameTracker, frame_alloc};
+use page_table::PTEFlags;
+use address::VPNRange;
+pub use address::{PhysAddr, PhysPageNum, StepByOne, VirtAddr, VirtPageNum};
+pub use frame_allocator::{frame_alloc, frame_dealloc, FrameTracker};
 pub use page_table::{
     PageTableEntry,
+    PageTable,
     translated_byte_buffer,
     translated_str,
     translated_refmut,
+    UserBuffer, UserBufferIterator,
 };
-pub use memory_set::{MemorySet, KERNEL_SPACE, MapPermission};
+pub use memory_set::{kernel_token, MapPermission, MemorySet, KERNEL_SPACE};
 pub use memory_set::remap_test;
 
 

@@ -1,5 +1,5 @@
 TARGET := riscv64gc-unknown-none-elf
-MODE := debug
+MODE := release
 KERNEL_ELF = target/$(TARGET)/$(MODE)/os
 KERNEL_BIN = $(KERNEL_ELF).bin
 BOOTLOADER = ../bootloader/rustsbi-qemu.bin
@@ -11,12 +11,15 @@ KERNEL_ENTRY_PA = 0x80200000
 OBJDUMP := rust-objdump --arch-name=riscv64
 OBJCOPY := rust-objcopy --binary-architecture=riscv64
 
+# 镜像位置
+FS_IMG := ../user/target/$(TARGET)/release/fs.img
+
 ifeq ($(MODE), release)
 	MODE_ARG := --release
 endif
 
 
-build: env kernel $(KERNEL_BIN)
+build: env kernel $(KERNEL_BIN) fs-img
 
 # 要裁剪掉metadata加载时pc才是正确的位置
 # 裁剪后生成到.bin中($@表示target)
@@ -43,14 +46,25 @@ run: build
             -machine virt \
             -nographic \
             -bios $(BOOTLOADER) \
-            -device loader,file=$(KERNEL_BIN),addr=$(KERNEL_ENTRY_PA)
+            -device loader,file=$(KERNEL_BIN),addr=$(KERNEL_ENTRY_PA) \
+			-drive file=$(FS_IMG),if=none,format=raw,id=x0 \
+			-device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
 gdb: build
 	qemu-system-riscv64 \
             -machine virt \
             -nographic \
             -bios $(BOOTLOADER) \
-            -device loader,file=$(KERNEL_BIN),addr=$(KERNEL_ENTRY_PA) -S -s
+            -device loader,file=$(KERNEL_BIN),addr=$(KERNEL_ENTRY_PA) -S -s \
+			-drive file=$(FS_IMG),if=none,format=raw,id=x0 \
+			-device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+
+# 编译镜像
+fs-img: $(APPS)
+	@cd ../user && make build TEST=$(TEST)
+	@rm -f $(FS_IMG)
+	@cd ../easy-fs-fuse && cargo run --release -- -s ../user/src/bin/ -t ../user/target/riscv64gc-unknown-none-elf/release/
+
 
 clean:
 	cargo clean

@@ -109,3 +109,10 @@ pub fn close(fd: usize) -> isize {
 
 pub fn read(fd: usize, buf: &mut [u8]) -> isize { sys_read(fd, buf) }
 
+pub fn sleep(period_ms: usize) {
+    let start = sys_get_time();
+    while sys_get_time() < start + period_ms as isize {
+        sys_yield();
+    }
+}
+

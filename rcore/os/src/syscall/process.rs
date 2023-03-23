@@ -1,3 +1,4 @@
+use crate::fs::{open_file, OpenFlags};
 use crate::task::{
     suspend_current_and_run_next,
     exit_current_and_run_next,
@@ -53,10 +54,12 @@ pub fn sys_exec(path: *const u8) -> isize {
     let token = current_user_token();
     // 获取应用名
     let path = translated_str(token, path);
-    if let Some(data) = get_app_data_by_name(path.as_str()) {
+    // 基于文件系统加载应用
+    if let Some(app_inode) = open_file(path.as_str(), OpenFlags::RDONLY) {
+        // read_all读取整个文件
+        let all_data = app_inode.read_all();
         let task = current_task().unwrap();
-        // exec替换掉地址空间
-        task.exec(data);
+        task.exec(all_data.as_slice());
         0
     } else {
         -1

@@ -14,7 +14,8 @@ use crate::config::{
     PAGE_SIZE,
     TRAMPOLINE,
     TRAP_CONTEXT,
-    USER_STACK_SIZE
+    USER_STACK_SIZE,
+    MMIO
 };
 
 // VPNRange描述一段虚拟页号的连续区间
@@ -151,6 +152,15 @@ impl MemorySet {
                 MapType::Identical,
                 MapPermission::R | MapPermission::W,
             ), None);
+        println!("mapping memory-mapped registers");
+        for pair in MMIO {
+            memory_set.push(MapArea::new(
+                (*pair).0.into(),
+                ((*pair).0 + (*pair).1).into(),
+                MapType::Identical,
+                MapPermission::R | MapPermission::W,
+            ), None);
+        }
         memory_set
     }
     /// Include sections in elf and trampoline and TrapContext and user stack,
@@ -406,6 +416,9 @@ pub fn remap_test() {
     println!("remap_test passed!");
 }
 
-
+///Get kernelspace root ppn
+pub fn kernel_token() -> usize {
+    KERNEL_SPACE.exclusive_access().token()
+}
 
 

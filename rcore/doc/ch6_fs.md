@@ -190,35 +190,58 @@ TODO:
 
 ### 块设备驱动层
 
-> os/drivers/block/mod.rs
+> os/drivers
 >
 > 虚拟磁盘设备virtio-blk-device
 
+- 使用具体的硬件驱动访问底层块设备，对外暴露BlockDevice trait从而能够接入文件系统
+
 - 通过MMIO访问qemu的virtio外设总线
-- 添加MMIO区域的内核态映射
+- 添加MMIO区域的内核态映射, 从而在开启虚拟内存后也能访问
 
 - 使用现成的virtio-drivers crate来使用块设备，网卡，GPU等设备
 - 实现virtio-driver要求的trait以实现物理内存的管理从而可以让crate分配VirtQueue
+
+
+#### Result
+
+- MMIO就相当一段硬件寄存器, 只不过是可以通过内存访问，也可以通过dump成结构体访问
+- virtio驱动给用户暴露了方便的接口，只要求用户能够管理好连续的物理内存即可
 
 
 ### 文件描述符层
 
 > os/src/fs/inode.rs
 
-- 进程中打开的文件: OSInode
-- 根据进程结构体
+- OSInode, 本质就是进程中打开的文件, 即File结构，只是rcore里叫他OSInode
+    * 内部关联到内存中的Inode, 内存中Inode再关联到磁盘DiskInode这才真正拿到数据
+- 接口
+    * 创建一个"File结构", 即OSInode
+    * 读出一段，写入一段
+- 进程结构体
+    * 打开文件表
+    * 初始化进程时默认创建三个stdio的fd
+    * fork时记得fork文件表
+        + a fork in the road
 - 最简单的单层根目录交互: list, open, read, write
+    * read, write统一从打开表获取实现的`File trait`的对象然后读写
+    * open: 申请fd, 填入打开文件表
+        + 申请fd就是遍历表找第一个空的项
+        + TODO: Q: rust中可以用trait如`pub fd_table: Vec<Option<Arc<dyn File + Send + Sync>>>`, c中怎么办
 - 添加相关系统调用: open, close
 - 修改read, write系统调用使更加通用
-    * 创建基于fd的stdio
+    * `stdio.rs`, 结合read, write系统调用分析
+    * 为stdio实现`File trait`从而可以用统一的read，write接口实现读写
+    * 创建基于fd的stdio: 每次r/w时都从打开文件表中获取到File结构然后读写
 - 基于文件系统加载应用: `sys_exec`
+    * 直接读入文件的所有内容到内存中, 创建task
 - 基于文件系统打开初始进程
-
+    * 直接读入文件的所有内容到内存中, 创建task
 
 
 ## Result
 
-- DiskInode vs Inode
+- DiskInode vs Inode vs OSInode
 - DiskFs vs Fs
     * 磁盘上的文件系统对象: 超级块
     * 内存中的文件系统对象: 从超级块中读取进去的数据
